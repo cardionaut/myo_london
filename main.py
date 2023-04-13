@@ -15,7 +15,6 @@ def main(config: DictConfig) -> None:
 
     cleaner = Cleaner(data)
     new_data = cleaner()
-    logger.debug(f'\n{new_data.iloc[:10, :]}')
 
     out_dir = os.path.dirname(file_path)
     new_file_name = f'{Path(file_path).stem}_cleaned.xlsx'

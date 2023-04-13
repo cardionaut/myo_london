@@ -55,4 +55,3 @@ class Cleaner:
                 )
 
         self.data = base_data.dropna(axis=1, how='all').drop('redcap_event_name', axis=1)
-
