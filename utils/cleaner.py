@@ -12,7 +12,6 @@ class Cleaner:
         self.drop_rows()
         self.rename_events()
         self.combine_rows()
-        self.final_cleanup()
 
         return self.data
 
@@ -36,12 +35,6 @@ class Cleaner:
             self.data['redcap_event_name'] = self.data['redcap_event_name'].str.replace(old, new, regex=False)
         self.events = list(rename_dict.values())
         self.events.remove('base')  # base cols already exist
-
-        # concat_func = np.vectorize(self._concat_cols)
-        # self.data['redcap_event_name'] = concat_func(
-        #     self.data['redcap_event_name'], self.data['redcap_repeat_instance'].astype('Int64'), delimiter='_',
-        # )  # Int64 allows NaN values
-        # self.data = self.data.drop('redcap_repeat_instance', axis=1)  # not needed anymore
         self.data = self.data.drop('redcap_repeat_instrument', axis=1)  # empty anyway
 
     def combine_rows(self) -> None:
@@ -63,11 +56,3 @@ class Cleaner:
 
         self.data = base_data.dropna(axis=1, how='all').drop('redcap_event_name', axis=1)
 
-    def final_cleanup(self) -> None:
-        """Remove empty cols"""
-        pass
-
-    @staticmethod
-    def _concat_cols(*args, delimiter='_') -> None:
-        strs = [str(arg) for arg in args if not pd.isnull(arg)]
-        return delimiter.join(strs) if strs else np.nan
