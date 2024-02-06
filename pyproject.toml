@@ -6,6 +6,7 @@ authors = ["cardionaut"]
 
 [tool.poetry.dependencies]
 python = "^3.9.13"
+hydra-core = "*"
 loguru = "^0.6.0"
 openpyxl = "^3.0.10"
 matplotlib = "^3.5.3"
