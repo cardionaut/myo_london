@@ -37,6 +37,9 @@ class CombineRows:
     def combine_rows(self) -> None:
         """Combine rows belonging to the same patient in one row"""
         base_data = self.data[self.data['redcap_event_name'].str.contains('base')]
+        endfu_data = self.data[self.data['redcap_event_name'].str.contains('end_of_followup_arm_1')]
+        base_data = base_data.merge(endfu_data, how='left', on='redcap_id', suffixes=[None, '_endfu'])
+
         for event in self.events:
             event_data = self.data[self.data['redcap_event_name'].str.contains(event)]
             # find relevant (non-empty) columns for each event
@@ -51,4 +54,4 @@ class CombineRows:
                     tmp, how='outer', on='redcap_id', suffixes=[None, f'_{event}_{event_number}']
                 )
 
-        self.data = base_data.dropna(axis=1, how='all').drop('redcap_event_name', axis=1)
+        self.data = base_data.dropna(axis=1, how='all')
