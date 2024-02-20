@@ -55,6 +55,7 @@ class Cleaner:
     def time_to_censor(self) -> None:
         """Create time_to_mace columns"""
         fu_time_cols = self.fu_time_cols[::-1]  # reverse order to get time to last follow up
+        self.data['ob_time_days'] = self.data['ob_time_endfu'] * 365
 
         for i, row in self.data.iterrows():
             mace_type_years = {mace_type: [] for mace_type in self.mace_types.keys()}
@@ -81,12 +82,13 @@ class Cleaner:
                     self.data.loc[i, f'{mace_type}'] = 1
                     global_censor_mace.append(min(mace_days))
                 elif fu_days:
-                    self.data.loc[i, f'time_to_{mace_type}'] = fu_days
+                    self.data.loc[i, f'time_to_{mace_type}'] = max(fu_days, row['ob_time_days'])
                     self.data.loc[i, f'{mace_type}'] = 0
-                    global_censor_fu.append(fu_days)
+                    global_censor_fu.append(max(fu_days, row['ob_time_days']))
                 else:
-                    self.data.loc[i, f'time_to_{mace_type}'] = np.nan
+                    self.data.loc[i, f'time_to_{mace_type}'] = row['ob_time_days']
                     self.data.loc[i, f'{mace_type}'] = 0
+                    global_censor_fu.append(row['ob_time_days'])
 
             if global_censor_mace:
                 global_censor = min(global_censor_mace)

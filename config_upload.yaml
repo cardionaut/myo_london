@@ -1,0 +1,15 @@
+defaults:
+  - _self_
+  - override hydra/hydra_logging: disabled
+  - override hydra/job_logging: disabled
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .
+
+
+template_file: /home/sebalzer/Documents/Projects/Flamber/raw_data/L1429FlamBeR_ImportTemplate_2024-02-16.csv
+strain_file: /home/sebalzer/Documents/Projects/Flamber/raw_data/strain_all_NG.xlsx
+function_file: /home/sebalzer/Documents/Projects/Flamber/raw_data/Function NG.xlsx
+diastology_file: /home/sebalzer/Documents/Projects/Flamber/raw_data/Diastologie NG.xlsx
