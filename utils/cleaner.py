@@ -28,10 +28,12 @@ class Cleaner:
         patient_year = self.data['patient_year']  # don't want to drop this
         cmr = self.data['date_cmr']
         this_cmr = self.data['date_this_cmr']
+        # recommendations = self.data['whichrecommendations_2']
         self.data = self.data.apply(pd.to_numeric, errors='coerce')
         self.data['patient_year'] = patient_year
         self.data['date_cmr'] = cmr
         self.data['date_this_cmr'] = this_cmr
+        # self.data['whichrecommendations_2'] = recommendations
         # cols to drop according to config
         self.data = self.data.drop(self.cols_to_drop, axis=1)
         # empty cols
@@ -41,7 +43,7 @@ class Cleaner:
         date_cols = [col for col in date_cols if col not in ['date_cmr', 'date_this_cmr']]
         self.data = self.data.drop(date_cols, axis=1)
         # follow up cols
-        fu_cols = [col for col in self.data.columns if '_fu_' in col]
+        fu_cols = [col for col in self.data.columns if '_fu_' in col and not col.endswith('_fu_1')]
         self.data = self.data.drop(fu_cols, axis=1)
         # mace cols
         mace_regex = re.compile('.*_mace_\d\d?$')

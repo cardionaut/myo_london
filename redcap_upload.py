@@ -12,45 +12,49 @@ def main(config: DictConfig) -> None:
     template = pd.read_csv(config.template_file)
     template = template.loc[:, ~template.columns.str.contains('unnamed', case=False)]
     template_cols = template.columns
-    strain = pd.read_excel(config.strain_file, skiprows=2)
-    strain = strain.iloc[:-1, :]
-    func = pd.read_excel(config.function_file)
-    dias = pd.read_excel(config.diastology_file)
 
-    # Clean strain frame
-    logger.info('Cleaning strain frame')
-    strain = strain.rename(columns={'record_id': 'redcap_id'})
-    strain = cleanup(strain)
-    strain.columns = strain.columns.str.lower()
+    strain = pd.read_excel(config.strain_file, skiprows=2) if config.strain_file is not None else None
+    func = pd.read_excel(config.function_file) if config.function_file is not None else None
+    dias = pd.read_excel(config.diastology_file) if config.diastology_file is not None else None
 
-    # Clean func frame
-    logger.info('Cleaning func frame')
-    func = func.rename(columns={'record_id': 'redcap_id'})
-    func = cleanup(func)
-    func.columns = func.columns.str.lower()
+    if strain is not None:
+        logger.info('Cleaning strain frame')
+        strain = strain.iloc[:-1, :]  # TODO: remove this for future files (last row should be empty)
+        strain = strain.rename(columns={'record_id': 'redcap_id'})
+        strain = cleanup(strain)
+        strain.columns = strain.columns.str.lower()
 
-    # Clean dias frame
-    logger.info('Cleaning dias frame')
-    dias = dias.rename(columns={'Redcap-ID': 'redcap_id'})
-    dias = cleanup(dias)
-    dias = dias.rename(
-        columns={
-            'RV_2d_edSR_long': 'RV_3d_edSR_long',
-            'RV_2d_adSR_long': 'RV_3d_adSR_long',
-            'RV_2d_e/a_dSR_long': 'RV_3d_e/a_dSR_long',
-            'RV_2d_edVel_long': 'RV_3d_edVel_long',
-            'RV_2d_adVel_long': 'RV_3d_adVel_long',
-            'RV_2d_e/a_dVel_long': 'RV_3d_e/a_dVel_long',
-        }
-    )
-    dias.columns = dias.columns.str.lower()
-    dias.columns = dias.columns.str.replace('/', '')
+    if func is not None:
+        logger.info('Cleaning func frame')
+        func = func.rename(columns={'record_id': 'redcap_id'})
+        func = cleanup(func)
+        func.columns = func.columns.str.lower()
+
+    if dias is not None:
+        logger.info('Cleaning dias frame')
+        dias = dias.rename(columns={'Redcap-ID': 'redcap_id'})
+        dias = cleanup(dias)
+        dias = dias.rename(
+            columns={
+                'RV_2d_edSR_long': 'RV_3d_edSR_long',
+                'RV_2d_adSR_long': 'RV_3d_adSR_long',
+                'RV_2d_e/a_dSR_long': 'RV_3d_e/a_dSR_long',
+                'RV_2d_edVel_long': 'RV_3d_edVel_long',
+                'RV_2d_adVel_long': 'RV_3d_adVel_long',
+                'RV_2d_e/a_dVel_long': 'RV_3d_e/a_dVel_long',
+            }
+        )
+        dias.columns = dias.columns.str.lower()
+        dias.columns = dias.columns.str.replace('/', '')
 
     # Merge the dataframes
     merge_on = ['redcap_id', 'redcap_event_name', 'redcap_repeat_instance']
-    template = template.merge(strain, how='left', on=merge_on, suffixes=['_template', None])
-    template = template.merge(func, how='left', on=merge_on, suffixes=['_template', None])
-    template = template.merge(dias, how='left', on=merge_on, suffixes=['_template', None])
+    if strain is not None:
+        template = template.merge(strain, how='left', on=merge_on, suffixes=['_template', None])
+    if func is not None:
+        template = template.merge(func, how='left', on=merge_on, suffixes=['_template', None])
+    if dias is not None:
+        template = template.merge(dias, how='left', on=merge_on, suffixes=['_template', None])
     cols_to_drop = [col for col in template.columns if '_template' in col or col not in template_cols]
     template = template.drop(columns=cols_to_drop)
     template = template.sort_values(by=merge_on).reset_index(drop=True)
@@ -60,12 +64,12 @@ def main(config: DictConfig) -> None:
     file_basename = os.path.basename(config.template_file).split(".")[0]
     new_file_name = f'{file_basename}_merged.csv'
 
-    template['iqscore_func'] = template['iq_ft']
-    template.loc[template['date_this_cmr'].notna(), 'cmr_examination_complete'] = 0
-    template.loc[template['lv_edv'].notna(), 'cmr_cardiac_function_complete'] = 2
-    template.loc[template['sax_available'].notna(), 'cmr_feature_tracking_complete'] = 2
-
-    template.loc[template['ft_arrhythmia'] == 3, 'ft_arrhythmia'] = 0
+    if strain is not None:
+        template['iqscore_func'] = template['iq_ft']
+        template.loc[template['date_this_cmr'].notna(), 'cmr_examination_complete'] = 0
+        template.loc[template['lv_edv'].notna(), 'cmr_cardiac_function_complete'] = 2
+        template.loc[template['sax_available'].notna(), 'cmr_feature_tracking_complete'] = 2
+        template.loc[template['ft_arrhythmia'] == 3, 'ft_arrhythmia'] = 0
 
     # Clean datatypes
     int_cols = [
@@ -77,7 +81,11 @@ def main(config: DictConfig) -> None:
         'cmr_cardiac_function_complete',
         'cmr_feature_tracking_complete',
     ]
-    template[int_cols] = template[int_cols].astype('Int64')
+    for col in int_cols:
+        try:
+            template[col] = template[col].astype('Int64')
+        except KeyError:
+            pass
 
     logger.info(f'Saving merged data to {os.path.join(out_dir, new_file_name)}')
     template.to_csv(os.path.join(out_dir, new_file_name), index=False)
