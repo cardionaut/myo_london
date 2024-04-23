@@ -11,7 +11,7 @@ hydra:
 
 template_file: /home/sebalzer/Documents/Projects/Flamber/raw_data/L1429FlamBeR_ImportTemplate_2024-02-16.csv
 strain_file: null
-function_file: null
+function_file: /home/sebalzer/Documents/Projects/Flamber/raw_data/Function2.xlsx
 diastology_file: null
 lge_file: null
 mapping_file: null

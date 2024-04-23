@@ -12,28 +12,31 @@ def main(config: DictConfig) -> None:
     template = pd.read_csv(config.template_file)
     template = template.loc[:, ~template.columns.str.contains('unnamed', case=False)]
     template_cols = template.columns
+    non_numeric_cols = ['redcap_id', 'redcap_event_name', 'redcap_repeat_instance', 'date_this_cmr']
 
     strain = pd.read_excel(config.strain_file, skiprows=2) if config.strain_file is not None else None
     func = pd.read_excel(config.function_file) if config.function_file is not None else None
     dias = pd.read_excel(config.diastology_file) if config.diastology_file is not None else None
+    lge = pd.read_excel(config.lge_file) if config.lge_file is not None else None
+    mapping = pd.read_excel(config.mapping_file) if config.mapping_file is not None else None
 
     if strain is not None:
         logger.info('Cleaning strain frame')
         strain = strain.iloc[:-1, :]  # TODO: remove this for future files (last row should be empty)
         strain = strain.rename(columns={'record_id': 'redcap_id'})
-        strain = cleanup(strain)
+        strain = cleanup(strain, non_numeric_cols)
         strain.columns = strain.columns.str.lower()
 
     if func is not None:
         logger.info('Cleaning func frame')
         func = func.rename(columns={'record_id': 'redcap_id'})
-        func = cleanup(func)
+        func = cleanup(func, non_numeric_cols)
         func.columns = func.columns.str.lower()
 
     if dias is not None:
         logger.info('Cleaning dias frame')
         dias = dias.rename(columns={'Redcap-ID': 'redcap_id'})
-        dias = cleanup(dias)
+        dias = cleanup(dias, non_numeric_cols)
         dias = dias.rename(
             columns={
                 'RV_2d_edSR_long': 'RV_3d_edSR_long',
@@ -46,6 +49,18 @@ def main(config: DictConfig) -> None:
         )
         dias.columns = dias.columns.str.lower()
         dias.columns = dias.columns.str.replace('/', '')
+
+    if lge is not None:
+        logger.info('Cleaning lge frame')
+        lge = lge.rename(columns={'record_id': 'redcap_id'})
+        lge = cleanup(lge, non_numeric_cols)
+        lge.columns = lge.columns.str.lower()
+
+    if mapping is not None:
+        logger.info('Cleaning mapping frame')
+        mapping = mapping.rename(columns={'record_id': 'redcap_id'})
+        mapping = cleanup(mapping, non_numeric_cols)
+        mapping.columns = mapping.columns.str.lower()
 
     # Merge the dataframes
     merge_on = ['redcap_id', 'redcap_event_name', 'redcap_repeat_instance']
@@ -87,15 +102,11 @@ def main(config: DictConfig) -> None:
         except KeyError:
             pass
 
-    logger.info(f'Saving merged data to {os.path.join(out_dir, new_file_name)}')
+    template = template.dropna(axis=1, how='all').dropna(axis=0, thresh=4)
     template.to_csv(os.path.join(out_dir, new_file_name), index=False)
 
-    # for manual inspection
-    template = template.dropna(axis=1, how='all').dropna(axis=0, thresh=4)
-    template.to_csv(os.path.join(out_dir, f'{file_basename}_merged_inspection.csv'), index=False)
 
-
-def cleanup(frame):
+def cleanup(frame, non_numeric_cols):
     frame.loc[:, :] = frame.loc[:, ~frame.columns.str.contains('unnamed', case=False)]
 
     frame.loc[frame['redcap_event_name'].isna(), 'redcap_event_name'] = 'baseline_arm_1'
@@ -108,9 +119,10 @@ def cleanup(frame):
     frame['redcap_id'] = frame['redcap_id'].apply(lambda x: x.split('(')[0] if '(' in x else x)
     frame['redcap_id'] = frame['redcap_id'].astype(int)
 
-    frame = frame.replace('/', '', regex=True)
+    for col in frame.columns:
+        if col not in non_numeric_cols:
+            frame[col] = frame[col].replace('[a-zA-Z/%²]', '', regex=True)
     frame = frame.replace('--', np.nan, regex=True)
-
     return frame
 
 
